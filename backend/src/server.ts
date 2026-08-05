@@ -1,4 +1,3 @@
-// Entry point - starts the HTTP server. All app configuration lives in app.ts.
 
 import { app } from "./app";
 import { env } from "./config/env";

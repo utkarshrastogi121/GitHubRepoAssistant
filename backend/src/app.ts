@@ -1,7 +1,3 @@
-// Configures the Express app: middleware, routes, swagger, error handler.
-// Kept separate from server.ts so the app can be imported in tests
-// without actually starting a listening server.
-
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -25,10 +21,8 @@ mountSwagger(app);
 
 app.use("/api", apiRoutes);
 
-// 404 handler for unmatched routes
 app.use((req, res) => {
   res.status(404).json({ error: `Route not found: ${req.method} ${req.path}` });
 });
 
-// Global error handler - must be registered last
 app.use(errorHandler);
