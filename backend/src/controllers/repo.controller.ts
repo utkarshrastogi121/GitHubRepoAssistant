@@ -1,5 +1,3 @@
-// Thin HTTP layer for repository analysis endpoints.
-// Validates input (via middleware), calls repo.service, returns JSON.
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";

@@ -1,7 +1,3 @@
-// Orchestrates the full "analyze repository" flow:
-// clone -> parse -> detect framework/language -> build tree -> save to DB.
-// This is the main entry point called by repo.controller.ts.
-
 import { prisma } from "../config/db";
 import { cloneRepository, cleanupClonedRepo, parseGithubUrl } from "../github/clone";
 import { parseRepository } from "./parser.service";
