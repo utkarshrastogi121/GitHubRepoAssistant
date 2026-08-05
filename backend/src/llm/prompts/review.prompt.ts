@@ -1,12 +1,3 @@
-// Prompt templates for all "code review" style features: bugs, code smells,
-// suggestions, API explanation, business logic explanation.
-// Kept as small focused functions rather than one giant configurable prompt.
-//
-// IMPORTANT: each function builds ONE prompt covering MULTIPLE files, so the
-// service only needs ONE generateContent call per feature request - not one
-// call per file. This matters a lot on rate/quota-limited API keys (Gemini's
-// free tier caps requests-per-day quite low), where looping per file could
-// burn through a day's entire quota on a single API call.
 
 interface ReviewFile {
   filePath: string;

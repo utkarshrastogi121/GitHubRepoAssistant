@@ -1,4 +1,3 @@
-// Prompt template for generating a README.md for the analyzed repository.
 
 import { FileTreeNode } from "../../types";
 

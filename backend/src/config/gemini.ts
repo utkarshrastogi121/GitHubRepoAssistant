@@ -1,7 +1,3 @@
-// Single Gemini client instance, reused everywhere we need to call the model.
-// Keeping this in one file means the API key and model names are configured
-// exactly once.
-
 import { GoogleGenAI } from "@google/genai";
 import { env } from "./env";
 

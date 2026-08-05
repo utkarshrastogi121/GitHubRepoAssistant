@@ -1,7 +1,3 @@
-// Thin wrapper functions around the Gemini SDK client.
-// All raw SDK calls go through here so the rest of the app never
-// touches the SDK directly - makes it easy to swap models later.
-
 import { genAI, GEMINI_MODEL, GEMINI_EMBEDDING_MODEL } from "../config/gemini";
 import { logger } from "../utils/logger";
 
