@@ -8,8 +8,19 @@ import { errorHandler } from "./middlewares/error-handler";
 
 export const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://github-repo-assistant-taupe.vercel.app",
+];
+
+
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  })
+);
 app.use(morgan("dev"));
 app.use(express.json({ limit: "5mb" }));
 
