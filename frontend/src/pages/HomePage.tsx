@@ -1,13 +1,10 @@
-// Landing page: analyze a new repo, and browse previously-analyzed repos.
-// Matches POST /repos/analyze and GET /repos.
-
 import { useEffect, useState } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { AnalyzeForm } from "@/components/repo/AnalyzeForm";
 import { RepoCard } from "@/components/repo/RepoCard";
 import { Spinner } from "@/components/common/Spinner";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
-import { analyzeRepo, listRepos } from "@/api/repos";
+import { analyzeRepo, listRepos, deleteRepo } from "@/api/repos";
 import { Repository } from "@/types";
 import { useRepo } from "@/contexts/RepoContext";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +14,7 @@ export default function HomePage() {
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setActiveRepo } = useRepo();
+  const { activeRepo, setActiveRepo } = useRepo();
   const navigate = useNavigate();
 
   async function loadRepos() {
@@ -51,6 +48,17 @@ export default function HomePage() {
     }
   }
 
+  async function handleDelete(repoId: string) {
+    setError(null);
+    try {
+      await deleteRepo(repoId);
+      setRepos((prev) => prev.filter((repo) => repo.id !== repoId));
+      if (activeRepo?.id === repoId) setActiveRepo(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete repository");
+    }
+  }
+
   return (
     <PageContainer
       title="Analyze a GitHub Repository"
@@ -75,7 +83,7 @@ export default function HomePage() {
       ) : (
         <div className="flex flex-col gap-2">
           {repos.map((repo) => (
-            <RepoCard key={repo.id} repo={repo} onSelect={setActiveRepo} />
+            <RepoCard key={repo.id} repo={repo} onSelect={setActiveRepo} onDelete={handleDelete} />
           ))}
         </div>
       )}

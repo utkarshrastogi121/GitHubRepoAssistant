@@ -1,5 +1,3 @@
-// API calls for the Repository feature: analyze / list / get.
-
 import { apiClient } from "./client";
 import { Repository } from "@/types";
 
@@ -16,4 +14,8 @@ export async function listRepos(): Promise<Repository[]> {
 export async function getRepo(id: string): Promise<Repository> {
   const { data } = await apiClient.get<Repository>(`/repos/${id}`);
   return data;
+}
+
+export async function deleteRepo(id: string): Promise<void> {
+  await apiClient.delete(`/repos/${id}`);
 }
