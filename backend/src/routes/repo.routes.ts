@@ -66,4 +66,25 @@ router.get("/", repoController.listRepos);
  */
 router.get("/:id", repoController.getRepo);
 
+/**
+ * @openapi
+ * /repos/{id}:
+ *   delete:
+ *     summary: Delete a repository analysis (and its Chroma index, chat history, and analysis history)
+ *     tags: [Repository]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Repository id (uuid) to delete
+ *     responses:
+ *       204:
+ *         description: Repository deleted
+ *       404:
+ *         description: Repository not found
+ */
+router.delete("/:id", repoController.deleteRepo);
+
 export default router;

@@ -1,4 +1,3 @@
-
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import * as repoService from "../services/repo.service";
@@ -30,6 +29,15 @@ export async function listRepos(_req: Request, res: Response, next: NextFunction
   try {
     const repositories = await repoService.listRepos();
     res.json(repositories);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteRepo(req: Request, res: Response, next: NextFunction) {
+  try {
+    await repoService.deleteRepo(req.params.id);
+    res.status(204).send();
   } catch (err) {
     next(err);
   }

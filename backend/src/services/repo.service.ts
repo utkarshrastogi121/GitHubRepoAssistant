@@ -3,12 +3,12 @@ import { cloneRepository, cleanupClonedRepo, parseGithubUrl } from "../github/cl
 import { parseRepository } from "./parser.service";
 import { buildFileTree } from "./tree.service";
 import { detectFrameworkAndLanguage } from "./framework-detector.service";
+import { deleteCollectionForRepo } from "./vectorstore.service";
 import { logger } from "../utils/logger";
 
 export async function analyzeRepo(githubUrl: string) {
   const { owner, name } = parseGithubUrl(githubUrl);
 
-  // If already analyzed, return existing record instead of re-cloning
   const existing = await prisma.repository.findUnique({ where: { githubUrl } });
   if (existing) {
     logger.info(`Repository ${githubUrl} already analyzed, returning cached result`);
@@ -36,7 +36,6 @@ export async function analyzeRepo(githubUrl: string) {
     return repository;
   } finally {
     // Clean up disk space - we don't need the cloned repo after analysis.
-    // (For RAG indexing, we clone again in rag.service.ts - see Phase 4 notes.)
     await cleanupClonedRepo(localPath);
   }
 }
@@ -49,4 +48,13 @@ export async function getRepoById(id: string) {
 
 export async function listRepos() {
   return prisma.repository.findMany({ orderBy: { createdAt: "desc" } });
+}
+
+export async function deleteRepo(id: string) {
+  await getRepoById(id); // throws "Repository not found" if it doesn't exist
+
+  await deleteCollectionForRepo(id);
+  await prisma.repository.delete({ where: { id } });
+
+  logger.info(`Deleted repository ${id}`);
 }

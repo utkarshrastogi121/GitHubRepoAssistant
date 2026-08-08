@@ -1,9 +1,9 @@
-
 import { CloudClient, Collection } from "chromadb";
 import { env } from "../config/env";
 import { EmbeddedChunk } from "./embedding.service";
 import { RetrievedChunk } from "../types";
 import { embedText } from "../llm/gemini-client";
+
 
 const client = new CloudClient({
   apiKey: env.CHROMA_API_KEY,
@@ -29,8 +29,6 @@ export async function resetCollection(repoId: string): Promise<Collection> {
   try {
     await client.deleteCollection({ name });
   } catch {
-    
-    
   }
 
   return client.createCollection({ name, embeddingFunction: noopEmbeddingFunction });
@@ -79,4 +77,11 @@ export async function queryTopChunks(
     language: (metadatas[i]?.language as string) ?? "",
     score: distances[i] ?? 0,
   }));
+}
+
+export async function deleteCollectionForRepo(repoId: string): Promise<void> {
+  try {
+    await client.deleteCollection({ name: collectionName(repoId) });
+  } catch {
+  }
 }
