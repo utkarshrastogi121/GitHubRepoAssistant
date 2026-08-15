@@ -4,7 +4,6 @@ import { EmbeddedChunk } from "./embedding.service";
 import { RetrievedChunk } from "../types";
 import { embedText } from "../llm/gemini-client";
 
-
 const client = new CloudClient({
   apiKey: env.CHROMA_API_KEY,
   tenant: env.CHROMA_TENANT,
@@ -15,6 +14,9 @@ function collectionName(repoId: string): string {
   return `repo_${repoId}`;
 }
 
+// We always pass embeddings explicitly (generated via Gemini), so Chroma
+// never needs to embed text itself. This no-op satisfies Chroma's type
+// requirement for an embeddingFunction without ever actually being called.
 const noopEmbeddingFunction = {
   generate: async (_texts: string[]): Promise<number[][]> => {
     throw new Error(
@@ -31,7 +33,26 @@ export async function resetCollection(repoId: string): Promise<Collection> {
   } catch {
   }
 
-  return client.createCollection({ name, embeddingFunction: noopEmbeddingFunction });
+  return client.createCollection({
+    name,
+    embeddingFunction: noopEmbeddingFunction,
+    metadata: { "hnsw:space": "cosine" },
+  });
+}
+
+
+export async function addEmbeddedBatch(
+  collection: Collection,
+  repoId: string,
+  startIndex: number,
+  batch: EmbeddedChunk[]
+): Promise<void> {
+  await collection.add({
+    ids: batch.map((_, idx) => `${repoId}-${startIndex + idx}`),
+    embeddings: batch.map((c) => c.embedding),
+    documents: batch.map((c) => c.content),
+    metadatas: batch.map((c) => ({ filePath: c.filePath, language: c.language })),
+  });
 }
 
 const ADD_BATCH_SIZE = 100; // items per Chroma .add() call
@@ -40,14 +61,7 @@ export async function storeChunks(repoId: string, chunks: EmbeddedChunk[]): Prom
   const collection = await resetCollection(repoId);
 
   for (let i = 0; i < chunks.length; i += ADD_BATCH_SIZE) {
-    const batch = chunks.slice(i, i + ADD_BATCH_SIZE);
-
-    await collection.add({
-      ids: batch.map((_, idx) => `${repoId}-${i + idx}`),
-      embeddings: batch.map((c) => c.embedding),
-      documents: batch.map((c) => c.content),
-      metadatas: batch.map((c) => ({ filePath: c.filePath, language: c.language })),
-    });
+    await addEmbeddedBatch(collection, repoId, i, chunks.slice(i, i + ADD_BATCH_SIZE));
   }
 }
 
@@ -83,5 +97,6 @@ export async function deleteCollectionForRepo(repoId: string): Promise<void> {
   try {
     await client.deleteCollection({ name: collectionName(repoId) });
   } catch {
+
   }
 }
