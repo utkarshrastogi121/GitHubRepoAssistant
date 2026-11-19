@@ -66,3 +66,78 @@ enum ChatRole {
   USER
   ASSISTANT
 }
+
+// ---- Code graph (graph-aware retrieval) ----
+model CodeNode {
+  id           String   @id @default(uuid())
+  repositoryId String
+  nodeId       String // `file:<path>` or `symbol:<path>#<name>`
+  kind         String // FILE | FUNCTION | CLASS | INTERFACE | CONSTANT
+  name         String
+  filePath     String
+  symbol       String?
+  line         Int?
+  createdAt    DateTime @default(now())
+
+  @@unique([repositoryId, nodeId])
+  @@index([repositoryId, filePath])
+}
+
+model CodeEdge {
+  id           String   @id @default(uuid())
+  repositoryId String
+  fromNodeId   String
+  toNodeId     String
+  type         String // IMPORTS | CALLS | DEFINED_IN | EXTENDS
+  createdAt    DateTime @default(now())
+
+  @@unique([repositoryId, fromNodeId, toNodeId, type])
+  @@index([repositoryId, fromNodeId])
+}
+
+// ---- Metrics (shown in the UI) ----
+model QueryMetric {
+  id            String   @id @default(uuid())
+  repositoryId  String
+  sessionId     String?
+  question      String
+  retrievalMs   Int
+  llmMs         Int
+  totalMs       Int
+  seeds         Int
+  expandedFiles Int
+  finalChunks   Int
+  graphUsed     Boolean
+  createdAt     DateTime @default(now())
+
+  @@index([repositoryId, createdAt])
+}
+
+model IndexRun {
+  id            String   @id @default(uuid())
+  repositoryId  String
+  filesParsed   Int
+  chunksIndexed Int
+  graphNodes    Int
+  graphEdges    Int
+  totalMs       Int
+  createdAt     DateTime @default(now())
+
+  @@index([repositoryId, createdAt])
+}
+
+model EvaluationRun {
+  id             String   @id @default(uuid())
+  repositoryId   String
+  mode           String // VECTOR_ONLY | GRAPH_AWARE
+  questions      Int
+  recallAt5      Float
+  recallAt10     Float
+  mrr            Float
+  hitRate        Float
+  avgRetrievalMs Float
+  result         Json
+  createdAt      DateTime @default(now())
+
+  @@index([repositoryId, createdAt])
+}
