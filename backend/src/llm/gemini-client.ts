@@ -13,6 +13,15 @@ function isRateLimitError(err: unknown): boolean {
   return message.includes("429") || message.includes("RESOURCE_EXHAUSTED");
 }
 
+/** Google returns "Please retry in 44.9s" - wait that long, not a fixed 2s. */
+function retryDelayMs(err: unknown): number | null {
+  const message = err instanceof Error ? err.message : String(err);
+  const m = message.match(/retry in ([\d.]+)s/i);
+  if (m) return Math.ceil(parseFloat(m[1]) * 1000) + 1000;
+  return null;
+}
+
+
 // Retries a Gemini API call with exponential backoff when we hit a 429
 // (rate limit / quota exceeded). This is especially important on free-tier
 // API keys, which have low requests-per-minute limits.
@@ -25,7 +34,7 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
     } catch (err) {
       if (!isRateLimitError(err) || attempt >= MAX_RETRIES) throw err;
 
-      const delay = BASE_DELAY_MS * 2 ** attempt;
+      const delay = retryDelayMs(err) ?? BASE_DELAY_MS * 2 ** attempt;
       logger.warn(`Gemini rate limit hit, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
       await sleep(delay);
       attempt++;

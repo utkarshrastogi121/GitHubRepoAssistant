@@ -11,7 +11,8 @@ import { Button } from "@/components/common/Button";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { useRepo } from "@/contexts/RepoContext";
 import { indexRepo, sendMessage } from "@/api/chat";
-import { ChatMessage } from "@/types";
+import { ChatMessage, IndexMetrics, QueryMetrics } from "@/types";
+import { MetricsCard, formatMs } from "@/components/metrics/MetricsCard";
 
 export default function ChatPage() {
   const { activeRepo } = useRepo();
@@ -21,6 +22,8 @@ export default function ChatPage() {
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [messages, setMessages] = useState<Pick<ChatMessage, "role" | "content">[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [lastMetrics, setLastMetrics] = useState<QueryMetrics | null>(null);
+  const [indexMetrics, setIndexMetrics] = useState<IndexMetrics | null>(null);
 
   if (!activeRepo) {
     return (
@@ -37,7 +40,8 @@ export default function ChatPage() {
     setIsIndexing(true);
     setError(null);
     try {
-      await indexRepo(activeRepo!.id);
+      const result = await indexRepo(activeRepo!.id);
+      setIndexMetrics(result);
       setIsIndexed(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to index repository");
@@ -53,6 +57,7 @@ export default function ChatPage() {
     try {
       const response = await sendMessage(activeRepo!.id, text, sessionId);
       setSessionId(response.sessionId);
+      setLastMetrics(response.metrics ?? null);
       setMessages((prev) => [...prev, { role: "ASSISTANT", content: response.answer }]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get a response");
@@ -91,6 +96,41 @@ export default function ChatPage() {
           <ChatInput onSend={handleSend} isSending={isSending} disabled={!isIndexed} />
         </div>
       </div>
+
+      {indexMetrics && (
+        <div className="mt-4">
+          <MetricsCard
+            title="Indexing"
+            stats={[
+              { label: "Files parsed", value: String(indexMetrics.filesParsed) },
+              { label: "Chunks indexed", value: String(indexMetrics.chunksIndexed) },
+              { label: "Graph nodes", value: String(indexMetrics.graphNodes) },
+              { label: "Graph edges", value: String(indexMetrics.graphEdges) },
+              { label: "Index time", value: formatMs(indexMetrics.totalMs) },
+              { label: "Embedding time", value: formatMs(indexMetrics.embedMs) },
+            ]}
+          />
+        </div>
+      )}
+
+      {lastMetrics && (
+        <div className="mt-4">
+          <MetricsCard
+            title="Last answer — retrieval"
+            stats={[
+              { label: "Retrieval time", value: formatMs(lastMetrics.totalRetrievalMs) },
+              { label: "LLM time", value: formatMs(lastMetrics.llmMs) },
+              { label: "Total time", value: formatMs(lastMetrics.totalMs) },
+              { label: "Vector seeds", value: String(lastMetrics.seeds) },
+              {
+                label: "Graph files added",
+                value: lastMetrics.graphUsed ? String(lastMetrics.expandedFiles) : "0 (graph not used)",
+              },
+              { label: "Chunks sent to LLM", value: String(lastMetrics.finalChunks) },
+            ]}
+          />
+        </div>
+      )}
     </PageContainer>
   );
 }

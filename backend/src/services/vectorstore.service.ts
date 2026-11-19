@@ -84,14 +84,61 @@ export async function queryTopChunks(
   const documents = results.documents?.[0] ?? [];
   const metadatas = results.metadatas?.[0] ?? [];
   const distances = results.distances?.[0] ?? [];
+  const ids = results.ids?.[0] ?? [];
 
   return documents.map((doc: string | null, i: number) => ({
+    chunkId: ids[i] ?? undefined,
     content: doc ?? "",
     filePath: (metadatas[i]?.filePath as string) ?? "unknown",
     language: (metadatas[i]?.language as string) ?? "",
     score: distances[i] ?? 0,
+    isSeed: true,
   }));
 }
+
+/**
+ * Fetch up to `limitPerFile` chunks for each given file, for graph
+ * expansion. One `get` per file: Chroma's `where` filter is exact
+ * on metadata, so this never returns chunks from other files.
+ * Neighbour chunks have no vector score - the retriever assigns
+ * them a graph score instead (see rag/retriever.ts).
+ */
+export async function getChunksByFiles(
+  repoId: string,
+  filePaths: string[],
+  limitPerFile = 2
+): Promise<RetrievedChunk[]> {
+  const collection = await client.getCollection({
+    name: collectionName(repoId),
+    embeddingFunction: noopEmbeddingFunction,
+  });
+
+  const out: RetrievedChunk[] = [];
+  for (const filePath of filePaths) {
+    const res = await collection.get({
+      where: { filePath },
+      limit: limitPerFile,
+    });
+    const docs = res.documents ?? [];
+    const metas = res.metadatas ?? [];
+    const ids = res.ids ?? [];
+    docs.forEach((doc, i) => {
+      out.push({
+        chunkId: ids[i] ?? undefined,
+        content: doc ?? "",
+        filePath,
+        language: (metas[i]?.language as string) ?? "",
+        // No vector distance for graph neighbours; rerank uses
+        // graphScore. 1.0 keeps them below any real seed on `score`
+        // alone, so nothing downstream can mistake it for similarity.
+        score: 1,
+        isSeed: false,
+      });
+    });
+  }
+  return out;
+}
+
 
 export async function deleteCollectionForRepo(repoId: string): Promise<void> {
   try {

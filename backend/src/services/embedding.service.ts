@@ -6,8 +6,8 @@ export interface EmbeddedChunk extends CodeChunk {
   embedding: number[];
 }
 
-const BATCH_SIZE = 100; 
-const DELAY_BETWEEN_BATCHES_MS = 3000;
+const BATCH_SIZE = 20;
+const DELAY_BETWEEN_BATCHES_MS = 20000;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

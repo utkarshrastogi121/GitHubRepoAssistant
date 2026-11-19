@@ -14,8 +14,13 @@ export function buildRagPrompt(
   history: ChatHistoryItem[]
 ): string {
   const context = chunks
-    .map((c) => `File: ${c.filePath}\n---\n${c.content}`)
-    .join("\n\n");
+  .map((c) => {
+    // Graph neighbours carry their traversal path, so the LLM can follow a cross-file flow instead of guessing how two files relate. Seeds have no `via` and render as before.
+    const via = c.via ? ` (via: ${c.via})` : "";
+    return `File: ${c.filePath}${via}\n---\n${c.content}`;
+  })
+  .join("\n\n");
+
 
   const historyText = history
     .map((h) => `${h.role}: ${h.content}`)
