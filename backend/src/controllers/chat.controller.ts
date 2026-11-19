@@ -10,12 +10,14 @@ export const sendMessageSchema = z.object({
 
 export async function indexRepo(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = await ragService.indexRepository(req.params.repoId);
+    const force = req.body?.force === true;
+    const result = await ragService.indexRepository(req.params.repoId, { force });
     res.status(201).json(result);
   } catch (err) {
     next(err);
   }
 }
+
 
 export async function sendMessage(req: Request, res: Response, next: NextFunction) {
   try {

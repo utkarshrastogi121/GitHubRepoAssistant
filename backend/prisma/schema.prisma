@@ -15,6 +15,7 @@ model Repository {
   language        String?
   framework       String?
   fileTree        Json
+  lastIndexedCommitSha String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   analysisHistory AnalysisHistory[]
@@ -121,6 +122,7 @@ model IndexRun {
   graphNodes    Int
   graphEdges    Int
   totalMs       Int
+  commitSha    String?
   createdAt     DateTime @default(now())
 
   @@index([repositoryId, createdAt])

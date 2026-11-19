@@ -60,6 +60,8 @@ export interface IndexMetrics {
   embedMs: number;
   storeMs: number;
   totalMs: number;
+  skipped?: boolean;
+  commitSha?: string | null;
 }
 
 export interface ChatResponse {

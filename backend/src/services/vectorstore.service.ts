@@ -139,6 +139,17 @@ export async function getChunksByFiles(
   return out;
 }
 
+export async function hasChunks(repoId: string): Promise<boolean> {
+  try {
+    const collection = await client.getCollection({
+      name: collectionName(repoId),
+      embeddingFunction: noopEmbeddingFunction,
+    });
+    return (await collection.count()) > 0;
+  } catch {
+    return false;
+  }
+}
 
 export async function deleteCollectionForRepo(repoId: string): Promise<void> {
   try {

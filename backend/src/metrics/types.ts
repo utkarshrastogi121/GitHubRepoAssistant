@@ -31,7 +31,12 @@ export interface IndexMetrics {
   embedMs: number;
   storeMs: number;
   totalMs: number;
+  /** True when indexing was skipped because the repo is unchanged. */
+  skipped?: boolean;
+  /** Commit SHA the (last) index was built from. */
+  commitSha?: string | null;
 }
+
 
 export interface EvaluationQuestion {
   question: string;

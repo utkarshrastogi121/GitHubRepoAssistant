@@ -23,3 +23,20 @@ export async function fetchRepoMetadata(owner: string, name: string): Promise<Gi
     defaultBranch: data.default_branch ?? "main",
   };
 }
+
+export async function fetchLatestCommitSha(
+  owner: string,
+  name: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/commits?per_page=1`,
+      { headers: { Accept: "application/vnd.github+json" } }
+    );
+    if (!response.ok) return null;
+    const data = (await response.json()) as any[];
+    return data[0]?.sha ?? null;
+  } catch {
+    return null;
+  }
+}

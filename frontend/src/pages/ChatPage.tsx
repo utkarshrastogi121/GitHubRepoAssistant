@@ -20,7 +20,9 @@ export default function ChatPage() {
   const [isIndexing, setIsIndexing] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
-  const [messages, setMessages] = useState<Pick<ChatMessage, "role" | "content">[]>([]);
+  const [messages, setMessages] = useState<
+    Pick<ChatMessage, "role" | "content">[]
+  >([]);
   const [error, setError] = useState<string | null>(null);
   const [lastMetrics, setLastMetrics] = useState<QueryMetrics | null>(null);
   const [indexMetrics, setIndexMetrics] = useState<IndexMetrics | null>(null);
@@ -29,22 +31,27 @@ export default function ChatPage() {
     return (
       <PageContainer title="Chat">
         <ErrorBanner message="No repository selected. Analyze or select a repository first." />
-        <Link to="/" className="mt-4 inline-block text-sm text-brand-600 hover:underline">
+        <Link
+          to="/"
+          className="mt-4 inline-block text-sm text-brand-600 hover:underline"
+        >
           Go to Repositories
         </Link>
       </PageContainer>
     );
   }
 
-  async function handleIndex() {
+  async function handleIndex(force = false) {
     setIsIndexing(true);
     setError(null);
     try {
-      const result = await indexRepo(activeRepo!.id);
+      const result = await indexRepo(activeRepo!.id, force);
       setIndexMetrics(result);
       setIsIndexed(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to index repository");
+      setError(
+        err instanceof Error ? err.message : "Failed to index repository",
+      );
     } finally {
       setIsIndexing(false);
     }
@@ -58,7 +65,10 @@ export default function ChatPage() {
       const response = await sendMessage(activeRepo!.id, text, sessionId);
       setSessionId(response.sessionId);
       setLastMetrics(response.metrics ?? null);
-      setMessages((prev) => [...prev, { role: "ASSISTANT", content: response.answer }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "ASSISTANT", content: response.answer },
+      ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get a response");
     } finally {
@@ -74,9 +84,10 @@ export default function ChatPage() {
       {!isIndexed && (
         <div className="mb-4 flex items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-4 py-3">
           <p className="text-sm text-brand-800">
-            Index this repository before chatting. This chunks the code and stores it for retrieval.
+            Index this repository before chatting. This chunks the code and
+            stores it for retrieval.
           </p>
-          <Button onClick={handleIndex} isLoading={isIndexing}>
+          <Button onClick={() => handleIndex()} isLoading={isIndexing}>
             Index Repository
           </Button>
         </div>
@@ -93,7 +104,11 @@ export default function ChatPage() {
           <ChatWindow messages={messages} isThinking={isSending} />
         </div>
         <div className="mt-3">
-          <ChatInput onSend={handleSend} isSending={isSending} disabled={!isIndexed} />
+          <ChatInput
+            onSend={handleSend}
+            isSending={isSending}
+            disabled={!isIndexed}
+          />
         </div>
       </div>
 
@@ -102,14 +117,33 @@ export default function ChatPage() {
           <MetricsCard
             title="Indexing"
             stats={[
-              { label: "Files parsed", value: String(indexMetrics.filesParsed) },
-              { label: "Chunks indexed", value: String(indexMetrics.chunksIndexed) },
+              {
+                label: "Files parsed",
+                value: String(indexMetrics.filesParsed),
+              },
+              {
+                label: "Chunks indexed",
+                value: String(indexMetrics.chunksIndexed),
+              },
               { label: "Graph nodes", value: String(indexMetrics.graphNodes) },
               { label: "Graph edges", value: String(indexMetrics.graphEdges) },
               { label: "Index time", value: formatMs(indexMetrics.totalMs) },
-              { label: "Embedding time", value: formatMs(indexMetrics.embedMs) },
+              {
+                label: "Embedding time",
+                value: formatMs(indexMetrics.embedMs),
+              },
             ]}
           />
+          <div className="mt-2 flex items-center justify-between">
+            <p className="text-xs text-gray-500">
+              {indexMetrics.skipped
+                ? `Already up to date — commit ${indexMetrics.commitSha?.slice(0, 7) ?? ""}. Nothing was re-embedded.`
+                : "Index is current for the latest commit."}
+            </p>
+            <Button onClick={() => handleIndex(true)} isLoading={isIndexing}>
+              Re-index anyway
+            </Button>
+          </div>
         </div>
       )}
 
@@ -118,15 +152,23 @@ export default function ChatPage() {
           <MetricsCard
             title="Last answer — retrieval"
             stats={[
-              { label: "Retrieval time", value: formatMs(lastMetrics.totalRetrievalMs) },
+              {
+                label: "Retrieval time",
+                value: formatMs(lastMetrics.totalRetrievalMs),
+              },
               { label: "LLM time", value: formatMs(lastMetrics.llmMs) },
               { label: "Total time", value: formatMs(lastMetrics.totalMs) },
               { label: "Vector seeds", value: String(lastMetrics.seeds) },
               {
                 label: "Graph files added",
-                value: lastMetrics.graphUsed ? String(lastMetrics.expandedFiles) : "0 (graph not used)",
+                value: lastMetrics.graphUsed
+                  ? String(lastMetrics.expandedFiles)
+                  : "0 (graph not used)",
               },
-              { label: "Chunks sent to LLM", value: String(lastMetrics.finalChunks) },
+              {
+                label: "Chunks sent to LLM",
+                value: String(lastMetrics.finalChunks),
+              },
             ]}
           />
         </div>

@@ -3,10 +3,11 @@
 import { apiClient } from "./client";
 import { ChatMessage, ChatResponse, IndexResponse } from "@/types";
 
-export async function indexRepo(repoId: string): Promise<IndexResponse> {
-  const { data } = await apiClient.post<IndexResponse>(`/chat/${repoId}/index`);
+export async function indexRepo(repoId: string, force = false): Promise<IndexResponse> {
+  const { data } = await apiClient.post<IndexResponse>(`/chat/${repoId}/index`, { force });
   return data;
 }
+
 
 export async function sendMessage(
   repoId: string,

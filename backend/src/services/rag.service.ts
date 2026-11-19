@@ -3,13 +3,14 @@ import { cloneRepository, cleanupClonedRepo } from "../github/clone";
 import { parseRepository } from "./parser.service";
 import { chunkRepository } from "./chunking.service";
 import { embedChunks } from "./embedding.service";
-import { storeChunks } from "./vectorstore.service";
+import { storeChunks, hasChunks } from "./vectorstore.service";
 import { retrieveRelevantChunks } from "../rag/retriever";
 import { buildRagPrompt } from "../rag/prompt-builder";
 import { generateText } from "../llm/gemini-client";
 import { getRepoById } from "./repo.service";
 import { buildCodeGraph } from "../graph/graph-builder";
-import { saveCodeGraph } from "../graph/graph-store";
+import { saveCodeGraph, hasCodeGraph } from "../graph/graph-store";
+import { fetchLatestCommitSha } from "../github/github-api";
 import { IndexMetrics, QueryMetrics } from "../metrics/types";
 
 // Chunk + embed + store the repo's code in ChromaDB, and build its
@@ -17,8 +18,53 @@ import { IndexMetrics, QueryMetrics } from "../metrics/types";
 // again to re-index after changes). Every stage is timed and the
 // run is persisted (IndexRun) so the Repo page can show real
 // indexing metrics instead of a one-off console log.
-export async function indexRepository(repoId: string): Promise<IndexMetrics> {
+export async function indexRepository(
+  repoId: string,
+  options?: { force?: boolean }
+): Promise<IndexMetrics> {
   const repo = await getRepoById(repoId);
+
+  // Cheap pre-check: one GitHub API call, no clone, no embedding.
+  // Null means "unknown" (network / rate limit / no commits) - never
+  // treat that as unchanged, fall through to a full index.
+  const latestSha = await fetchLatestCommitSha(repo.owner, repo.name);
+
+  if (
+    !options?.force &&
+    latestSha &&
+    repo.lastIndexedCommitSha === latestSha
+  ) {
+    // SHA matches, but only skip when the previous index actually
+    // finished: the graph is saved before embedding, so a 429
+    // mid-index leaves a graph with no vectors behind.
+    const [graphOk, chunksOk] = await Promise.all([
+      hasCodeGraph(repoId),
+      hasChunks(repoId),
+    ]);
+    if (graphOk && chunksOk) {
+      const lastRun = await prisma.indexRun.findFirst({
+        where: { repositoryId: repoId },
+        orderBy: { createdAt: "desc" },
+      });
+      if (lastRun) {
+        return {
+          filesParsed: lastRun.filesParsed,
+          chunksIndexed: lastRun.chunksIndexed,
+          graphNodes: lastRun.graphNodes,
+          graphEdges: lastRun.graphEdges,
+          cloneMs: 0,
+          parseMs: 0,
+          graphMs: 0,
+          embedMs: 0,
+          storeMs: 0,
+          totalMs: lastRun.totalMs,
+          skipped: true,
+          commitSha: latestSha,
+        };
+      }
+    }
+  }
+
   const started = Date.now();
   const metrics: IndexMetrics = {
     filesParsed: 0,
@@ -31,6 +77,8 @@ export async function indexRepository(repoId: string): Promise<IndexMetrics> {
     embedMs: 0,
     storeMs: 0,
     totalMs: 0,
+    skipped: false,
+    commitSha: latestSha ?? null,
   };
 
   const cloneStarted = Date.now();
@@ -74,13 +122,21 @@ export async function indexRepository(repoId: string): Promise<IndexMetrics> {
         graphNodes: metrics.graphNodes,
         graphEdges: metrics.graphEdges,
         totalMs: metrics.totalMs,
+        commitSha: latestSha ?? null,
       },
     });
+    if (latestSha) {
+      await prisma.repository.update({
+        where: { id: repoId },
+        data: { lastIndexedCommitSha: latestSha },
+      });
+    }
     return metrics;
   } finally {
     await cleanupClonedRepo(localPath);
   }
 }
+
 
 export async function getOrCreateSession(repoId: string, sessionId?: string) {
   if (sessionId) {
